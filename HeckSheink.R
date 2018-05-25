@@ -4,7 +4,7 @@ library(foreign)
 library(readstata13)
 library(data.table)
 library(ivpack)
-
+library(xtable)
 
 setwd("~/Documents/CurrResearch/SkillBundling")
 
@@ -120,6 +120,14 @@ if( nlsy[,cor(skill_social,rosenberg_score)]<0 ){
 	nlsy[ , skill_social := (skill_social - mean(skill_social,na.rm=T))/var(skill_social,na.rm=T)^.5]
 }
 
+nlsy[  ,switch_occHL :=  (occ_1d<4 & shift(occ_1d)>=4) | (occ_1d>=4 & shift(occ_1d)<4), by=id]
+nlsy[  ,anyswitchHL :=  any( switch_occHL==1,na.rm=T ), by=id]
+
+nlsy[  ,anyswitchHL_L2H :=  any( switch_occHL==1,na.rm=T ), by=id]
+
+nlsy[  ,anyswitch :=  any( switch_occ==1,na.rm=T ), by=id]
+
+
 #
 # main regressions ################
 #
@@ -130,9 +138,9 @@ summary(nlsy[ seqno>=7 & seqno<14, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0
 										 	rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social  + lths + univ)])
 
 #on occupation stayers, only
-nlsy[ , anyswitch:= any(switch_occ==1), by=id]
-summary(nlsy[ seqno>=7 & seqno<14 & anyswitch==F, lm(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)])
-summary(nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social  + lths + univ|
+#nlsy[ , anyswitch:= any(switch_occ==1), by=id]
+summary(nlsy[ seqno>=7 & seqno<14 & anyswitchHL==F, lm(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)])
+summary(nlsy[ seqno>=7 & seqno<14 & anyswitchHL==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social  + lths + univ|
 															rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ)])
 
 #separate for occupations:
@@ -158,21 +166,85 @@ IVHS_occHL  <- nlsy[ seqno>=7 & seqno<14, ivreg(rwage~rwage0+shift(rwage0)+shift
 											 	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
 											  	I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
 
-IVHS_stay    <- nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ | 
+IVHS_stayHL    <- nlsy[ seqno>=7 & seqno<14 & anyswitchHL==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ | 
 											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ)]
 
-IVHS_stay_occHL<- nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+IVHS_stay    <- nlsy[ seqno>=7 & seqno<14 & anyswitch   ==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ | 
+												rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ)]
+
+IVHS_switch  <- nlsy[ seqno>=7 & seqno<14 & anyswitch   ==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ | 
+											   	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ)]
+
+
+IVHS_stayHL_occHL<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
 											  	I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
 											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
 											  	I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
 
+IVHS_stayHL_occHLalpha<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+											  	I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2))| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+											  	I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)) )]
+
+IVHS_stayHL_occHLbeta<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+											  	I(occ_1d<4)*(skill_verbal+skill_math+skill_social + lths + univ)| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+											  	I(occ_1d<4)*(skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_switchHL    <- nlsy[ seqno>=7 & seqno<14 & anyswitchHL==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ | 
+												rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ)]
+
+IVHS_switchHL_occHL<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+												I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+												rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+												I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+
+
 IVHS_occ  <- nlsy[ seqno>=7 & seqno<14, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
-													factor(occ_1d)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
-													rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
-													factor(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+												factor(occ_1d)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+												rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+												factor(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_stay_occ  <- nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+											  	factor(occ_1d)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+											  	factor(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_switch_occ<- nlsy[ seqno>=7 & seqno<14 & anyswitch==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+											  	factor(occ_1d)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+											  	factor(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
 
 
-IVHS_stay_occHL<- nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
-																  	factor(occ_1d)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
-																  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
-																  	factor(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+IVHS_stay_occalpha<- nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+											  	factor(occ_1d)*(rwage0+shift(rwage0)+shift(rwage0,2))| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+											  	factor(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)) )]
+
+IVHS_stay_occbeta  <- nlsy[ seqno>=7 & seqno<14 & anyswitch==F, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+											  	factor(occ_1d)*(skill_verbal+skill_math+skill_social + lths + univ)| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+											  	factor(occ_1d)*(skill_verbal+skill_math+skill_social + lths + univ) )]
+
+alphabeta0_HL <- waldtest( IVHS_stayHL_occHL,IVHS_stayHL, test="F"  )
+beta0_HL      <- waldtest( IVHS_stayHL_occHL, IVHS_stayHL_occHLalpha, test="F"  )
+alpha0_HL     <- waldtest( IVHS_stayHL_occHL,IVHS_stayHL_occHLbeta, test="F"  )
+
+alphabeta0 <- waldtest( IVHS_stay_occ,IVHS_stay, test="F"  )
+beta0      <- waldtest( IVHS_stay_occ,IVHS_stay_occalpha, test="F"  )
+alpha0     <- waldtest( IVHS_stay_occ,IVHS_stay_occbeta, test="F"  )
+
+alphabeta_test <- cbind(c(alphabeta0_HL$F[2], alphabeta0_HL$`Pr(>F)`[2],beta0_HL$F[2], beta0_HL$`Pr(>F)`[2],alpha0_HL$F[2], alpha0_HL$`Pr(>F)`[2]),
+						  c(alphabeta0$F[2], alphabeta0$`Pr(>F)`[2],beta0$F[2], beta0$`Pr(>F)`[2],alpha0$F[2], alpha0$`Pr(>F)`[2]))
+
+waldtest( IVHS_switchHL_occHL,IVHS_switchHL, test="F"  )
+waldtest( IVHS_switch_occ,IVHS_switch, test="F"  )
+
+
+# Recover skill price series ------------
+
+IVHS_t      <- nlsy[ seqno>=7 & seqno<14, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2) + year*(rwage0+shift(rwage0)+shift(rwage0,2)) +
+													skill_verbal+skill_math+skill_social + lths + univ +age + I(age^2)| 
+											  	rwage2+ shift(rwage2)+shift(rwage2,2) + year*(rwage2+ shift(rwage2)+shift(rwage2,2)) +
+													skill_verbal+skill_math+skill_social + lths + univ +age + I(age^2))]
+
