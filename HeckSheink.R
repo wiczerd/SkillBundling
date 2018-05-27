@@ -123,7 +123,14 @@ if( nlsy[,cor(skill_social,rosenberg_score)]<0 ){
 nlsy[  ,switch_occHL :=  (occ_1d<4 & shift(occ_1d)>=4) | (occ_1d>=4 & shift(occ_1d)<4), by=id]
 nlsy[  ,anyswitchHL :=  any( switch_occHL==1,na.rm=T ), by=id]
 
-nlsy[  ,anyswitchHL_L2H :=  any( switch_occHL==1,na.rm=T ), by=id]
+nlsy[  ,startL :=  any(occ_1d<4 & seqno==7,na.rm=T), by=id]
+nlsy[  ,endL   :=  any(occ_1d<4 & seqno==14,na.rm=T), by=id]
+
+nlsy[  ,startH :=  any(occ_1d>=4 & seqno==7,na.rm=T) , by=id]
+nlsy[  ,endH   :=  any(occ_1d>=4 & seqno==14,na.rm=T), by=id]
+nlsy[  ,anyswitchHL_H2L :=  any( (occ_1d>=4 & shift(occ_1d)<4),na.rm=T ) , by=id]
+nlsy[  ,anyswitchHL_L2H :=  any( (occ_1d<4 & shift(occ_1d)>=4),na.rm=T ), by=id]
+
 
 nlsy[  ,anyswitch :=  any( switch_occ==1,na.rm=T ), by=id]
 
@@ -237,8 +244,89 @@ alpha0     <- waldtest( IVHS_stay_occ,IVHS_stay_occbeta, test="F"  )
 alphabeta_test <- cbind(c(alphabeta0_HL$F[2], alphabeta0_HL$`Pr(>F)`[2],beta0_HL$F[2], beta0_HL$`Pr(>F)`[2],alpha0_HL$F[2], alpha0_HL$`Pr(>F)`[2]),
 						  c(alphabeta0$F[2], alphabeta0$`Pr(>F)`[2],beta0$F[2], beta0$`Pr(>F)`[2],alpha0$F[2], alpha0$`Pr(>F)`[2]))
 
+rnames <- c("F\ stat",     "P\ Val",
+			"F\ stat\ ",   "P\ Val\ ",
+			"F\ stat\ \ ", "P\ Val\ \ ")
+rownames(alphabeta_test) <-rnames
+colnames(alphabeta_test) <- c("2 Occupation", "6 Occupation")
+rowtitles <- list( pos=list(0,2,4), command=c("\\hline  Observed and unobserved & &  \\\\ \n",
+											  "\\hline \\hline   Observed       & &  \\\\  \n", 
+											  "\\hline \\hline   Unobserved     & &  \\\\  \n")  )
+tab_alphabetatest <- xtable(alphabeta_test, digits=2, 
+					   align="l|ll", caption=paste0("Weak price-equalization test \\label{weaktestH0}"))
+
+print(tab_alphabetatest,include.rownames=T, hline.after= c(nrow(tab_alphabetatest)), 
+	add.to.row=rowtitles, file="HS_p0stayer.tex"  )
+	
+
 waldtest( IVHS_switchHL_occHL,IVHS_switchHL, test="F"  )
 waldtest( IVHS_switch_occ,IVHS_switch, test="F"  )
+
+
+# Combinations of origin destination for movers:
+IVHS_switchH2L<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_H2L==T , ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																			(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+																			rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																			(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+IVHS_switchL2H<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_L2H==T , ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																		  	(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+																		  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																		  	(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_switchH2L_occHL<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_H2L==T , ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																		  	I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+																		  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																		  	I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_switchL2H_occHL<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_L2H==T , ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																			  	I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ)| 
+																			  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																			  	I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)+skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_switchL2H_occHLalpha<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_L2H==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																	 	I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2))| 
+																	 	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																	 	I(occ_1d)*(rwage2+shift(rwage2)+shift(rwage2,2)) )]
+
+IVHS_switchL2H_occHLbeta  <- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_L2H==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																	  	I(occ_1d<4)*(skill_verbal+skill_math+skill_social + lths + univ)| 
+																	  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																	  	I(occ_1d<4)*(skill_verbal+skill_math+skill_social + lths + univ) )]
+
+IVHS_switchH2L_occHLalpha<- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_H2L==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																	  	I(occ_1d<4)*(rwage0+shift(rwage0)+shift(rwage0,2))| 
+																	  	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																	  	I(occ_1d<4)*(rwage2+shift(rwage2)+shift(rwage2,2)) )]
+
+IVHS_switchH2L_occHLbeta  <- nlsy[ seqno>=7 & seqno<14 & anyswitchHL_H2L==T, ivreg(rwage~rwage0+shift(rwage0)+shift(rwage0,2)+skill_verbal+skill_math+skill_social + lths + univ +
+																	   	I(occ_1d<4)*(skill_verbal+skill_math+skill_social + lths + univ)| 
+																	   	rwage2+ shift(rwage2)+shift(rwage2,2) +skill_verbal+skill_math+skill_social + lths + univ+ 
+																	   	I(occ_1d<4)*(skill_verbal+skill_math+skill_social + lths + univ) )]
+
+alphabeta0_H2L <- waldtest( IVHS_switchH2L_occHL, IVHS_switchH2L, test="F"  )
+beta0_H2L      <- waldtest( IVHS_switchH2L_occHL, IVHS_switchH2L_occHLalpha, test="F"  )
+alpha0_H2L     <- waldtest( IVHS_switchH2L_occHL, IVHS_switchH2L_occHLbeta, test="F"  )
+
+alphabeta0_L2H <- waldtest( IVHS_switchL2H_occHL, IVHS_switchL2H, test="F"  )
+beta0_L2H      <- waldtest( IVHS_switchL2H_occHL, IVHS_switchL2H_occHLalpha, test="F"  )
+alpha0_L2H     <- waldtest( IVHS_switchL2H_occHL, IVHS_switchL2H_occHLbeta, test="F"  )
+
+alphabeta_strongtest <- cbind(c(alphabeta0_H2L$F[2], alphabeta0_H2L$`Pr(>F)`[2],beta0_H2L$F[2], beta0_H2L$`Pr(>F)`[2],alpha0_H2L$F[2], alpha0_H2L$`Pr(>F)`[2]),
+							  c(alphabeta0_L2H$F[2], alphabeta0_L2H$`Pr(>F)`[2],beta0_L2H$F[2], beta0_L2H$`Pr(>F)`[2],alpha0_L2H$F[2], alpha0_L2H$`Pr(>F)`[2]))
+
+rnames <- c("F\ stat",     "P\ Val",
+			"F\ stat\ ",   "P\ Val\ ",
+			"F\ stat\ \ ", "P\ Val\ \ ")
+rownames(alphabeta_strongtest) <-rnames
+colnames(alphabeta_strongtest) <- c("High -> Low", "Low -> High")
+rowtitles <- list( pos=list(0,2,4), command=c("\\hline  Observed and unobserved & &  \\\\ \n",
+											  "\\hline \\hline   Observed       & &  \\\\  \n", 
+											  "\\hline \\hline   Unobserved     & &  \\\\  \n")  )
+tab_alphabeta_strongtest <- xtable(alphabeta_strongtest, digits=2, 
+							align="l|ll", caption=paste0("Strong price-equalization test \\label{strongtestH0}"))
+
+print(tab_alphabeta_strongtest,include.rownames=T, hline.after= c(nrow(tab_alphabeta_strongtest)), 
+	  add.to.row=rowtitles, file="HS_p0switcher.tex"  )
 
 
 # Recover skill price series ------------
